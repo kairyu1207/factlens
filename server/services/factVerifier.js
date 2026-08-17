@@ -78,7 +78,7 @@ async function verifyFacts(masterEvent, facts, emitEvent = () => {}) {
         scrapedContents.forEach((content, idx) => {
           if (content) {
             successScrapes++;
-            searchResultsContext += `${content.substring(0, 50000)}\n---\n`;
+            searchResultsContext += `${content.substring(0, 3000)}\n---\n`;
             emitEvent({ type: 'scrape_snippet', url: urlsToScrape[idx], snippet: content.substring(0, 50000) });
             logAndEmit(`[Snippet] ${urlsToScrape[idx]}: ${content.substring(0, 100)}...`, 'info');
           }
@@ -223,11 +223,16 @@ Output JSON Format:
   ]
 }`;
 
+    const MAX_CONTEXT_CHARS = 20000;
+    const truncatedSearchResults = searchResults.length > MAX_CONTEXT_CHARS
+      ? `${searchResults.substring(0, MAX_CONTEXT_CHARS)}\n...(truncated)`
+      : searchResults;
+
     const userPrompt = `## Claim to Verify: ${fact.claim}
 ## Context: ${fact.context || ''}
 
 ## Scraped Context:
-${hasExternalSources ? searchResults : '(No external search results found)'}`;
+${hasExternalSources ? truncatedSearchResults : '(No external search results found)'}`;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
