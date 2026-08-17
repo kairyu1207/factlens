@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>FactLens Color Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px; }
+    .label { font-size: 13px; color: #94a3b8; margin-top: 30px; }
+    .row { display: flex; gap: 40px; align-items: center; }
+  </style>
+  <link rel="stylesheet" href="content.css">
+</head>
+<body>
+  <div class="label">초록 원 색상은 출처 확인 비율에 따라 자동 변화 (배터리 색상)</div>
+  <div class="row" id="demos"></div>
+
+  <script>
+    if (typeof chrome === 'undefined' || !chrome.runtime) {
+      window.chrome = { runtime: { sendMessage:()=>{}, onMessage:{addListener:()=>{}} }, storage: { local: { get:()=>Promise.resolve({}), set:()=>{} } } };
+    }
+  </script>
+  <script src="content.js"></script>
+  <script>
+    // 비율별 데모: 0%, 25%, 50%, 75%, 100%
+    const ratios = [
+      { label: '0% 확인', withSrc: 0, noSrc: 5 },
+      { label: '25% 확인', withSrc: 1, noSrc: 3 },
+      { label: '50% 확인', withSrc: 3, noSrc: 3 },
+      { label: '80% 확인', withSrc: 4, noSrc: 1 },
+      { label: '100% 확인', withSrc: 5, noSrc: 0 },
+    ];
+
+    function makeFacts(withSrc, noSrc) {
+      const facts = [];
+      for (let i = 0; i < withSrc; i++) {
+        facts.push({ id: i+1, claim: `확인된 정보 ${i+1}`, category: 'existence', verification: { status: 'VERIFIED', confidence: 0.9, explanation: '확인됨', sources: [{ title: 'Source', url: '#', relevance: '확인', credibility: { level: 'medium', description: '설명' } }] } });
+      }
+      for (let i = 0; i < noSrc; i++) {
+        facts.push({ id: withSrc+i+1, claim: `미확인 정보 ${i+1}`, category: 'existence', verification: { status: 'UNVERIFIED', confidence: 0.3, explanation: '미확인', sources: [] } });
+      }
+      return facts;
+    }
+
+    // 각 비율별로 버블 생성
+    ratios.forEach((r, idx) => {
+      const report = {
+        meta: {},
+        summary: { totalFacts: r.withSrc + r.noSrc, verified: r.withSrc, unverified: r.noSrc, refuted: 0, opinions: 0 },
+        facts: makeFacts(r.withSrc, r.noSrc)
+      };
+
+      // 버블 위치를 수동으로 오프셋
+      setTimeout(() => {
+        showFloatingBubble(report);
+        // 위치 조정: 여러 개 나란히 보이게
+        const wraps = document.querySelectorAll('.factlens-bubble-wrap');
+        const lastWrap = wraps[wraps.length - 1];
+        if (lastWrap) {
+          lastWrap.style.position = 'relative';
+          lastWrap.style.top = 'auto';
+          lastWrap.style.right = 'auto';
+          lastWrap.style.display = 'inline-flex';
+          lastWrap.style.flexDirection = 'column';
+          lastWrap.style.alignItems = 'center';
+          lastWrap.style.opacity = '1';
+          lastWrap.style.transform = 'scale(1)';
+          document.getElementById('demos').appendChild(lastWrap);
+
+          // 라벨 추가
+          const lbl = document.createElement('div');
+          lbl.style.cssText = 'font-size:11px; color:#94a3b8; margin-top:8px; text-align:center;';
+          lbl.textContent = r.label;
+          lastWrap.appendChild(lbl);
+        }
+      }, idx * 200);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>FactLens Widget</title>
+  <style>
+    :root {
+      --bg: #0b0f19; --border: #1e293b; --text: #f8fafc;
+      --accent: #3b82f6; --green: #22c55e; --red: #ef4444;
+      --mono: 'JetBrains Mono', 'Consolas', monospace;
+    }
+    body {
+      margin: 0; padding: 20px; font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg); color: var(--text); overflow-x: hidden;
+    }
+    
+    /* 3 Circles */
+    .circles-wrapper { display: flex; justify-content: center; align-items: center; position: relative; height: 180px; width: 100%; margin-bottom: 20px; }
+    .circle-group { position: relative; width: 310px; height: 180px; margin: 0 auto; }
+    .circle { position: absolute; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; font-weight: bold; cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease; backdrop-filter: blur(4px); }
+    .circle:hover { transform: scale(1.05); z-index: 10; }
+    .circle.green { width: 130px; height: 130px; background: rgba(34, 197, 94, 0.2); border: 2px solid var(--green); top: 25px; left: 0; box-shadow: 0 0 20px rgba(34,197,94,0.2); z-index: 2; }
+    .circle.blue { width: 85px; height: 85px; background: rgba(59, 130, 246, 0.2); border: 2px solid var(--accent); top: 0; right: 0; box-shadow: 0 0 20px rgba(59,130,246,0.2); z-index: 3; }
+    .circle.red { width: 85px; height: 85px; background: rgba(239, 68, 68, 0.2); border: 2px solid var(--red); bottom: 0; right: 0; box-shadow: 0 0 20px rgba(239,68,68,0.2); z-index: 1; }
+    .circle-val { font-size: 26px; font-weight: 700; margin-bottom: 2px; font-family: var(--mono); text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    .circle-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; text-align: center; line-height: 1.2; opacity: 0.9; }
+
+    /* Memos (Depth 1) */
+    .memo-section { display: none; animation: slideDown 0.3s ease; }
+    .memo-section.show { display: block; }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .fact-card { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+    .fact-card:hover { background: rgba(255,255,255,0.1); }
+    .fact-card.unverified { border-left-color: var(--red); }
+    .fact-claim { font-size: 13px; margin-bottom: 6px; line-height: 1.4; }
+    .fact-meta { font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; }
+    
+    /* Sources (Depth 2) */
+    .sources-container { display: none; margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 6px; }
+    .source-item { font-size: 11px; padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; color: #93c5fd; text-decoration: underline; }
+    .source-item:hover { color: #60a5fa; }
+    
+    /* Detail (Depth 3) */
+    .source-detail { display: none; margin-top: 8px; padding: 10px; background: #000; border: 1px solid #333; border-radius: 4px; font-size: 11px; line-height: 1.5; color: #cbd5e1; }
+    .source-detail pre { white-space: pre-wrap; font-family: 'Inter', sans-serif; margin: 0; }
+  </style>
+</head>
+<body>
+
+  <div class="circles-wrapper">
+    <div class="circle-group">
+      <!-- Total Facts -->
+      <div class="circle green" id="circleTotal" onclick="toggleMemos('all')">
+        <span class="circle-val" id="valTotal">0</span>
+        <span class="circle-lbl">Total<br>Facts</span>
+      </div>
+      <!-- Verified -->
+      <div class="circle blue" id="circleVerified" onclick="toggleMemos('verified')">
+        <span class="circle-val" id="valVerified">0</span>
+        <span class="circle-lbl">Verified<br>Sources</span>
+      </div>
+      <!-- Unverified/Refuted -->
+      <div class="circle red" id="circleUnverified" onclick="toggleMemos('unverified')">
+        <span class="circle-val" id="valUnverified">0</span>
+        <span class="circle-lbl">Unverified<br>Refuted</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="memoContainer" class="memo-section"></div>
+
+  <script>
+    let globalFacts = [];
+    let currentFilter = null;
+
+    // Listen for messages from index.html
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'NEW_FACTS') {
+        const newFacts = event.data.facts;
+        globalFacts = [...globalFacts, ...newFacts];
+        updateCounters();
+        if (currentFilter) renderMemos(currentFilter);
+      } else if (event.data && event.data.type === 'RESET') {
+        globalFacts = [];
+        updateCounters();
+        $('memoContainer').innerHTML = '';
+      }
+    });
+
+    const $ = id => document.getElementById(id);
+
+    function updateCounters() {
+      $('valTotal').textContent = globalFacts.length;
+      const verified = globalFacts.filter(f => f.verification.status === 'VERIFIED').length;
+      $('valVerified').textContent = verified;
+      $('valUnverified').textContent = globalFacts.length - verified;
+    }
+
+    window.toggleMemos = function(filter) {
+      const container = $('memoContainer');
+      if (currentFilter === filter) {
+        container.classList.remove('show');
+        currentFilter = null;
+      } else {
+        currentFilter = filter;
+        renderMemos(filter);
+        container.classList.add('show');
+      }
+    };
+
+    function renderMemos(filter) {
+      const container = $('memoContainer');
+      container.innerHTML = '';
+      
+      const filtered = globalFacts.filter(f => {
+        if (filter === 'all') return true;
+        const isVer = f.verification.status === 'VERIFIED';
+        return filter === 'verified' ? isVer : !isVer;
+      });
+
+      filtered.forEach(fact => {
+        const isVer = fact.verification.status === 'VERIFIED';
+        
+        const card = document.createElement('div');
+        card.className = `fact-card ${isVer ? '' : 'unverified'}`;
+        card.innerHTML = `
+          <div class="fact-claim">${fact.claim}</div>
+          <div class="fact-meta">
+            <span>${fact.verification.status} (${Math.round(fact.verification.confidence * 100)}%)</span>
+            <span>Sources: ${fact.verification.sources?.length || 0}</span>
+          </div>
+          <div class="sources-container" id="sources-${fact.id}"></div>
+        `;
+        
+        card.onclick = (e) => {
+          if (e.target.closest('.source-item') || e.target.closest('.source-detail')) return;
+          const sContainer = $(`sources-${fact.id}`);
+          if (sContainer.style.display === 'block') {
+            sContainer.style.display = 'none';
+          } else {
+            renderSources(sContainer, fact);
+            sContainer.style.display = 'block';
+          }
+        };
+
+        container.appendChild(card);
+      });
+    }
+
+    function renderSources(container, fact) {
+      container.innerHTML = `<div style="font-size:10px; color:#fff; margin-bottom:5px;">AI Explanation: ${fact.verification.explanation}</div>`;
+      
+      if (!fact.verification.sources || fact.verification.sources.length === 0) {
+        container.innerHTML += `<div style="font-size:10px; color:#94a3b8;">No sources found.</div>`;
+        return;
+      }
+
+      fact.verification.sources.forEach((src, idx) => {
+        const sItem = document.createElement('div');
+        sItem.className = 'source-item';
+        sItem.textContent = src.title || src.url || 'Unknown Source';
+        
+        const detail = document.createElement('div');
+        detail.className = 'source-detail';
+        detail.innerHTML = `
+          <div style="margin-bottom:4px; color:#38bdf8;"><a href="${src.url}" target="_blank" style="color:inherit;">[Visit Link]</a></div>
+          <div><strong>Relevance:</strong> ${src.relevance}</div>
+          <div style="margin-top:4px;"><strong>Credibility:</strong> ${src.credibility.level} (${src.credibility.description})</div>
+        `;
+
+        sItem.onclick = () => {
+          detail.style.display = detail.style.display === 'block' ? 'none' : 'block';
+        };
+
+        container.appendChild(sItem);
+        container.appendChild(detail);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .fact-card { background: rgba(0,0,0,0.4); border: 1px solid #2a3555; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+    .fact-detail { max-height: 0; overflow: hidden; margin-top: 0; padding-top: 0; border-top: none; font-size: 12px; color: #8b95b0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); line-height: 1.5; opacity: 0; }
+    .fact-detail.open { max-height: 1000px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.1); opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="fact-card" id="card">
+    <div style="display: flex; justify-content: space-between;">
+      <div>Claim</div>
+      <div class="expand-btn">▼ 펼치기</div>
+    </div>
+    <div class="fact-detail">
+      Detail content goes here.
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('click', function(e) {
+      const card = e.target.closest('.fact-card');
+      if (card && !e.target.closest('.fact-detail')) {
+        const detail = card.querySelector('.fact-detail');
+        if (detail) {
+          detail.classList.toggle('open');
+          const expandBtn = card.querySelector('.expand-btn');
+          if (expandBtn) expandBtn.textContent = detail.classList.contains('open') ? '▲ 접기' : '▼ 펼치기';
+        }
+      }
+    });
+  </script>
+</body>
+</html>

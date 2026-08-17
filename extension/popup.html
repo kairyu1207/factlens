@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FactLens — 팩트체크 리포트</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app">
+    <!-- 헤더 -->
+    <header class="header">
+      <div class="header-brand">
+        <span class="header-icon">🛡️</span>
+        <h1 class="header-title">FactLens</h1>
+        <span class="header-badge">Beta</span>
+      </div>
+      <p class="header-subtitle">디지털 리터러시 팩트체크 도우미</p>
+    </header>
+
+    <!-- 상태: 대기 중 -->
+    <div id="state-idle" class="state">
+      <div class="idle-container">
+        <div class="idle-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="url(#grad)" stroke-width="1.5">
+            <defs>
+              <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#60a5fa"/>
+                <stop offset="100%" style="stop-color:#a78bfa"/>
+              </linearGradient>
+            </defs>
+            <path d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/>
+          </svg>
+        </div>
+        <h2 class="idle-title">영상을 기다리는 중...</h2>
+        <p class="idle-desc">영상이 재생되면 비디오 위에 나타나는<br><strong>FactLens 버튼</strong>을 클릭하세요</p>
+        
+        <div class="divider">
+          <span>또는 직접 입력</span>
+        </div>
+
+        <div class="manual-input">
+          <textarea id="manual-text" placeholder="팩트체크할 텍스트를 입력하세요...&#10;&#10;예: 타짜에서 고니가 고광렬을 죽인다" rows="4"></textarea>
+          <button id="manual-analyze-btn" class="btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            분석하기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 상태: 분석 중 -->
+    <div id="state-analyzing" class="state hidden">
+      <div class="analyzing-container">
+        <div class="analyzing-animation">
+          <div class="pulse-ring"></div>
+          <div class="pulse-ring delay-1"></div>
+          <div class="pulse-ring delay-2"></div>
+          <div class="analyzing-icon">🔍</div>
+        </div>
+        <h2 class="analyzing-title">분석 중...</h2>
+        <p class="analyzing-step" id="analyzing-step">음성을 텍스트로 변환하고 있습니다</p>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 상태: 결과 -->
+    <div id="state-result" class="state hidden">
+      <!-- 점수 카드 -->
+      <div class="score-card" id="score-card">
+        <div class="score-main">
+          <div class="score-ring" id="score-ring">
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(148,163,184,0.1)" stroke-width="8"/>
+              <circle id="score-arc" cx="60" cy="60" r="52" fill="none" stroke-width="8" stroke-linecap="round"
+                stroke-dasharray="326.73" stroke-dashoffset="326.73"
+                transform="rotate(-90 60 60)"/>
+            </svg>
+            <div class="score-value">
+              <span class="score-number" id="score-number">0</span>
+              <span class="score-unit">점</span>
+            </div>
+          </div>
+          <div class="score-info">
+            <span class="score-grade" id="score-grade">—</span>
+            <p class="score-desc" id="score-desc">분석 결과를 불러오는 중...</p>
+          </div>
+        </div>
+
+        <div class="score-stats" id="score-stats">
+          <div class="stat-item stat-total">
+            <span class="stat-value" id="stat-total">0</span>
+            <span class="stat-label">총 정보</span>
+          </div>
+          <div class="stat-item stat-verified">
+            <span class="stat-value" id="stat-verified">0</span>
+            <span class="stat-label">✅ 확인</span>
+          </div>
+          <div class="stat-item stat-unverified">
+            <span class="stat-value" id="stat-unverified">0</span>
+            <span class="stat-label">⚠️ 미확인</span>
+          </div>
+          <div class="stat-item stat-refuted">
+            <span class="stat-value" id="stat-refuted">0</span>
+            <span class="stat-label">❌ 반박</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 필터 탭 -->
+      <div class="filter-tabs" id="filter-tabs">
+        <button class="filter-tab active" data-filter="all">전체</button>
+        <button class="filter-tab" data-filter="VERIFIED">✅ 확인</button>
+        <button class="filter-tab" data-filter="UNVERIFIED">⚠️ 미확인</button>
+        <button class="filter-tab" data-filter="REFUTED">❌ 반박</button>
+        <button class="filter-tab" data-filter="OPINION">💭 의견</button>
+      </div>
+
+      <!-- 팩트 리스트 -->
+      <div class="facts-container" id="facts-container">
+        <!-- JS로 동적 생성 -->
+      </div>
+
+      <!-- 원본 텍스트 -->
+      <details class="transcript-section">
+        <summary>📝 추출된 원본 텍스트</summary>
+        <p class="transcript-text" id="transcript-text"></p>
+      </details>
+
+      <!-- 분석 메타 정보 -->
+      <div class="meta-info" id="meta-info">
+        <span id="meta-time"></span>
+        <span id="meta-date"></span>
+      </div>
+
+      <!-- 다시 분석 -->
+      <button id="reset-btn" class="btn-secondary">새로운 분석 시작</button>
+    </div>
+
+    <!-- 서버 연결 상태 -->
+    <div class="server-status" id="server-status">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">서버 확인 중...</span>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

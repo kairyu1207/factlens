@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FactLens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1219;
+      --bg2: #161b27;
+      --bg3: #1c2333;
+      --border: #2a3555;
+      --text: #e8ecf4;
+      --text2: #8b95b0;
+      --text3: #5c6785;
+      --accent: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #f59e0b;
+      --font: 'Inter', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:var(--font); background:var(--bg); color:var(--text); width:100vw; height:100vh; overflow:hidden; display:flex; flex-direction:column; }
+
+    /* ?占?占?Header ?占?占?*/
+    .hdr { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--bg2); border-bottom:1px solid var(--border); flex-shrink:0; }
+    .hdr-left { display:flex; align-items:center; gap:10px; }
+    .logo { width:26px; height:26px; background:linear-gradient(135deg,var(--accent),#8b5cf6); border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:#fff; }
+    .hdr h1 { font-size:15px; font-weight:600; }
+    .dot { width:7px; height:7px; border-radius:50%; background:var(--text3); }
+    .dot.on { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 2s infinite; }
+    .dot.err { background:var(--red); }
+    .status { font-size:11px; color:var(--text2); font-family:var(--mono); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .hdr-right { display:flex; align-items:center; gap:8px; }
+
+    /* ?占?占?Start Screen ?占?占?*/
+    .start { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; }
+    .start h2 { font-size:18px; margin-bottom:8px; }
+    .start p { font-size:13px; color:var(--text2); line-height:1.6; margin-bottom:24px; max-width:360px; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:linear-gradient(135deg,var(--accent),#6366f1); color:#fff; border:none; border-radius:40px; font-size:14px; font-weight:600; font-family:var(--font); cursor:pointer; transition:all .2s; }
+    .btn:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(59,130,246,.3); }
+    .btn-sm { padding:5px 14px; font-size:12px; border-radius:20px; }
+    .btn-red { background:var(--red); }
+    .btn-red:hover { box-shadow:0 4px 12px rgba(239,68,68,.3); }
+    .note { font-size:11px; color:var(--text3); margin-top:12px; }
+
+    /* ?占?占?Content (scrollable) ?占?占?*/
+    .content { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+
+    /* ?占?占?Steps ?占?占?*/
+    .steps { border-bottom:1px solid var(--border); padding:6px 0; flex-shrink:0; }
+    .step { display:flex; align-items:center; gap:8px; padding:6px 16px; font-size:12px; }
+    .step-icon { width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; font-family:var(--mono); border-radius:5px; background:var(--bg3); color:var(--text3); flex-shrink:0; }
+    .step[data-s="running"] .step-icon { background:rgba(59,130,246,.15); color:var(--accent); }
+    .step[data-s="done"] .step-icon { background:rgba(34,197,94,.1); color:var(--green); }
+    .step[data-s="fail"] .step-icon { background:rgba(239,68,68,.1); color:var(--red); }
+    .step[data-s="skip"] .step-icon { background:rgba(245,158,11,.1); color:var(--orange); }
+    .step-label { flex:1; color:var(--text); }
+    .step-st { font-size:10px; color:var(--text3); font-family:var(--mono); max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .step[data-s="done"] .step-st { color:var(--green); }
+    .step[data-s="fail"] .step-st { color:var(--red); }
+    .spinner { width:12px; height:12px; border:2px solid rgba(59,130,246,.2); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* ?占?占?Text Feed ?占?占?*/
+    .feed { flex:1; display:flex; flex-direction:column; min-height:0; border-bottom:1px solid var(--border); }
+    .feed-hdr { display:flex; align-items:center; justify-content:space-between; padding:8px 16px; border-bottom:1px solid var(--border); }
+    .feed-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--text2); }
+    .feed-count { font-size:10px; color:var(--text3); font-family:var(--mono); }
+    .feed-body { flex:1; overflow-y:auto; padding:8px 12px; font-size:11px; line-height:1.5; font-family:var(--mono); color:var(--text2); }
+    .feed-empty { color:var(--text3); font-style:italic; padding:12px; }
+    .entry { padding:4px 0; border-bottom:1px solid rgba(255,255,255,.02); animation:slideIn .2s ease; }
+    .entry:last-child { border:none; }
+    .t-time { color:var(--text3); font-size:9px; margin-right:4px; }
+    .t-new { color:var(--green); font-size:9px; font-weight:600; }
+     to{opacity:1;transform:translateX(0)} }
+
+    /* ?占?占?Results ?占?占?*/
+    .results { display:none; flex:1; flex-direction:column; min-height:0; }
+    .results.show { display:flex; }
+    .results-body { flex:1; overflow-y:auto; padding:4px 0; }
+    .fact { padding:8px 14px; border-bottom:1px solid rgba(255,255,255,.03); cursor:pointer; transition:background .1s; }
+    .fact:hover { background:var(--bg3); }
+    .fact-hdr { display:flex; align-items:flex-start; gap:6px; }
+    .fact-n { width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; font-family:var(--mono); border-radius:4px; flex-shrink:0; }
+    .fact-verified .fact-n { background:rgba(34,197,94,.1); color:var(--green); border:1px solid rgba(34,197,94,.2); }
+    .fact-refuted .fact-n { background:rgba(239,68,68,.1); color:var(--red); border:1px solid rgba(239,68,68,.2); }
+    .fact-unverified .fact-n { background:rgba(245,158,11,.1); color:var(--orange); border:1px solid rgba(245,158,11,.2); }
+    .fact-claim { font-size:12px; line-height:1.5; flex:1; }
+    .fact-arrow { color:var(--text3); font-size:9px; transition:transform .2s; flex-shrink:0; margin-top:3px; }
+    .fact.open .fact-arrow { transform:rotate(180deg); }
+    .fact-detail { display:none; margin-top:8px; padding:8px; background:var(--bg3); border-radius:6px; font-size:11px; line-height:1.6; }
+    .fact.open .fact-detail { display:block; }
+    .src-card { padding:6px; background:rgba(255,255,255,.02); border-radius:4px; margin-top:4px; }
+    .src-link { color:var(--accent); text-decoration:none; font-size:11px; }
+    .src-link:hover { text-decoration:underline; }
+    .cred { font-size:9px; font-weight:600; padding:1px 6px; border-radius:8px; display:inline-block; margin-top:3px; }
+    .cred-high { background:rgba(34,197,94,.1); color:var(--green); }
+    .cred-medium { background:rgba(245,158,11,.1); color:var(--orange); }
+    .cred-low { background:rgba(239,68,68,.1); color:var(--red); }
+
+    /* Capture video: off-screen but fully rendered */
+    #vidWrap { position:fixed; left:-9999px; top:0; width:1280px; height:720px; opacity:0; pointer-events:none; }
+    #vid { width:100%; height:100%; }
+
+    /* Floating stop button (visible during capture) */
+    .float-stop { display:none; position:fixed; bottom:20px; right:20px; z-index:99999; padding:8px 20px; background:var(--red); color:#fff; border:none; border-radius:30px; font-size:13px; font-weight:600; font-family:var(--font); cursor:pointer; box-shadow:0 4px 16px rgba(239,68,68,.4); transition:all .2s; }
+    .float-stop:hover { transform:scale(1.05); box-shadow:0 6px 24px rgba(239,68,68,.5); }
+    .float-stop.show { display:block; animation:fadeUp .3s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    .self-read { display:none; padding:6px 12px; background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.2); border-radius:6px; font-size:11px; color:var(--orange); margin:8px 16px; }
+    .self-read.show { display:block; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width:3px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+    /* OCR Region Selector */
+    #ocrRegionBtn { padding:4px 10px; font-size:11px; background:rgba(59,130,246,.15); border:1px solid var(--accent); color:var(--accent); border-radius:6px; cursor:pointer; font-family:var(--font); transition:all .2s; }
+    #ocrRegionBtn:hover { background:rgba(59,130,246,.3); }
+    #ocrRegionBtn.active { background:var(--accent); color:#fff; }
+    #regionOverlay { display:none; position:fixed; inset:0; cursor:crosshair; z-index:99998; background:rgba(0,0,0,.45); }
+    #regionOverlay.show { display:flex; align-items:center; justify-content:center; }
+    #regionHint { color:#fff; font-size:14px; font-weight:600; pointer-events:none; text-shadow:0 2px 8px #000; }
+    #regionBox { position:fixed; border:2px solid var(--accent); background:rgba(59,130,246,.1); pointer-events:none; z-index:99999; display:none; }
+    #regionClear { display:none; padding:3px 8px; font-size:10px; background:rgba(239,68,68,.15); border:1px solid var(--red); color:var(--red); border-radius:4px; cursor:pointer; font-family:var(--font); }
+    #regionClear.show { display:inline-block; }
+
+    /* Three Circles UI (Free-Floating Widget) */
+    .floating-circles-widget {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+      padding: 20px;
+      border-top: 1px solid var(--border);
+    }
+    .floating-circles-widget.show { display: flex; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
+    
+    .circles-wrapper { display: flex; justify-content: center; align-items: center; position: relative; height: 280px; width: 310px; }
+    .circle-group { position: relative; width: 310px; height: 280px; }
+    .circle { position: absolute; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; font-weight: bold; cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease; backdrop-filter: blur(4px); }
+    .circle:hover { transform: scale(1.05); z-index: 10; }
+    .circle.green { width: 130px; height: 130px; background: rgba(34, 197, 94, 0.2); border: 2px solid var(--green); top: 75px; left: 0; box-shadow: 0 0 20px rgba(34,197,94,0.2); z-index: 2; }
+    .circle.blue { width: 85px; height: 85px; background: rgba(59, 130, 246, 0.2); border: 2px solid var(--accent); top: 0; right: 0; box-shadow: 0 0 20px rgba(59,130,246,0.2); z-index: 3; }
+    .circle.purple { width: 85px; height: 85px; background: rgba(168, 85, 247, 0.2); border: 2px solid #a855f7; top: 95px; right: 0; box-shadow: 0 0 20px rgba(168,85,247,0.2); z-index: 4; }
+    .circle.red { width: 85px; height: 85px; background: rgba(239, 68, 68, 0.2); border: 2px solid var(--red); bottom: 0; right: 0; box-shadow: 0 0 20px rgba(239,68,68,0.2); z-index: 1; }
+    .circle-val { font-size: 26px; font-weight: 700; margin-bottom: 2px; font-family: var(--mono); text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    .circle-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; text-align: center; line-height: 1.2; opacity: 0.9; }
+
+    .memo-section { 
+      display: none; 
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      max-width: 600px;
+      background: rgba(15, 18, 25, 0.95); 
+      backdrop-filter: blur(15px); 
+      border: 1px solid var(--border); 
+      border-radius: 12px; 
+      padding: 20px; 
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8); 
+      max-height: 80vh; 
+      overflow-y: auto; 
+      z-index: 10000;
+      animation: modalFadeIn 0.3s ease; 
+    }
+    @keyframes modalFadeIn { from { opacity: 0; transform: translate(-50%, -55%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+    
+    .memo-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 9999;
+      backdrop-filter: blur(3px);
+    }
+
+    .fact-card { background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+    .fact-card:hover { background: rgba(59,130,246,0.08); border-color: var(--accent); }
+    .fact-card.refuted { border-left-color: var(--red); }
+    .fact-card.unverified { border-left-color: #f59e0b; }
+    .fact-claim { font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--text); line-height: 1.4; }
+    .fact-meta { display: flex; gap: 8px; font-size: 10px; color: var(--text3); flex-wrap: wrap; }
+    .fact-badge { padding: 2px 6px; border-radius: 10px; background: rgba(255,255,255,0.05); }
+    .fact-badge.verified { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+    .fact-badge.refuted { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+    .fact-badge.unverified { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+
+    .fact-detail { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+    
+    .inner-box { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 16px; }
+    .inner-box-title { color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.5px; }
+
+    .source-memo { background: rgba(15,18,25,0.6); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 12px; margin-top: 12px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="logo">F</div>
+      <h1>FactLens</h1>
+    </div>
+    <div class="hdr-right">
+      <span class="dot" id="dot"></span>
+      <span class="status" id="status">Ready</span>
+    </div>
+  </div>
+
+  <!-- Start screen -->
+  <div class="start" id="startScreen">
+    <h2>Screen Monitor</h2>
+    <p>Share a browser tab to start real-time fact checking. Text is extracted continuously via OCR.</p>
+    <button class="btn" id="btnStart">Start Capture</button>
+    <div class="note">Tip: Share the YouTube/Instagram tab, not this window</div>
+  </div>
+
+    <!-- Active content (combined PiP view) -->
+    <div class="content" id="activeContent" style="display:none; height: 100vh; overflow-y: auto;">
+      <!-- Controls -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <span style="font-size:11px;color:var(--text2);font-family:var(--mono);" id="timer">00:00</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button id="ocrRegionBtn" title="드래그로 OCR 영역 선택">영역 선택</button>
+        <span id="regionClear">✕ 초기화</span>
+        <button class="btn btn-sm btn-red" id="btnStop">Stop</button>
+      </div>
+    </div>
+
+    <!-- Pipeline -->
+    <div class="steps" id="steps">
+      <div class="step" id="s-capture" data-s="pending"><span class="step-icon">-</span><span class="step-label">Screen Capture</span><span class="step-st"></span></div>
+      <div class="step" id="s-ocr" data-s="pending">
+        <div class="step-icon">-</div>
+        <div class="step-label">Text Extraction (OCR)</div>
+        <div class="step-st">Waiting...</div>
+        <div id="quotaInfo" style="margin-left: auto; font-size: 11px; color: var(--text3); font-family: monospace;"></div>
+      </div>
+      <div class="step" id="s-audio" data-s="pending"><span class="step-icon">-</span><span class="step-label">Audio Extraction (Whisper)</span><span class="step-st">Waiting...</span></div>
+      <div class="step" id="s-preprocess" data-s="pending"><span class="step-icon">-</span><span class="step-label">Data Preprocessing</span><span class="step-st">Waiting...</span></div>
+      <div class="step" id="s-extract" data-s="pending"><span class="step-icon">-</span><span class="step-label">Fact Extraction</span><span class="step-st">Waiting...</span></div>
+      <div class="step" id="s-search" data-s="pending"><span class="step-icon">-</span><span class="step-label">Hybrid Web Search</span><span class="step-st">Waiting...</span></div>
+      <div class="step" id="s-scrape" data-s="pending"><span class="step-icon">-</span><span class="step-label">Deep Web Scraping</span><span class="step-st">Waiting...</span></div>
+      <div class="step" id="s-verify_ai" data-s="pending"><span class="step-icon">-</span><span class="step-label">AI Verification</span><span class="step-st">Waiting...</span></div>
+    </div>
+
+    <!-- Video Title Container -->
+    <div id="videoTitleContainer" style="margin-bottom: 8px; font-weight: 500; font-size: 14px; color: #64b5f6;"></div>
+
+    <!-- Live text (Split OCR & Audio) -->
+    <div style="display: flex; gap: 10px; margin-bottom: 12px; height: 260px;">
+      <div class="feed" style="flex: 1; margin-bottom: 0;">
+        <div class="feed-hdr">
+          <span class="feed-title">LIVE OCR TEXT</span>
+          <span class="feed-count" id="charCount">0 chars</span>
+        </div>
+        <div class="feed-body" id="feedBody">
+          <div class="feed-empty">Waiting for text...</div>
+        </div>
+      </div>
+      <div class="feed" style="flex: 1; margin-bottom: 0;">
+        <div class="feed-hdr">
+          <span class="feed-title">LIVE AUDIO TEXT</span>
+          <span class="feed-count" id="audioCharCount">0 chars</span>
+        </div>
+        <div class="feed-body" id="audioFeed" style="white-space: pre-wrap;">
+          <div id="audioFeedBody"></div>
+        </div>
+      </div>
+    </div>
+
+    
+  
+        <!-- Preprocessing Logs (Integrated) -->
+      <div style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 15px; padding-bottom: 20px;">
+        <div class="feed-hdr" style="margin-bottom: 10px;">
+          <span class="feed-title" style="color: var(--accent);">Data Preprocessing Monitor</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 15px; padding: 0 16px;">
+          
+          <h3 style="margin:0; font-size:12px; color: #fff; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">[STEP 1] 단어 교정 (Word Correction)</h3>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #93c5fd;">OCR [Top]</h4>
+              <div id="ocrTopLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #93c5fd; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #93c5fd;">OCR [Middle]</h4>
+              <div id="ocrMiddleLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #93c5fd; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #93c5fd;">OCR [Bottom]</h4>
+              <div id="ocrBottomLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #93c5fd; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #fca5a5;">오디오 단어 교정</h4>
+              <div id="audioCorrectionLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #fca5a5; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+          </div>
+          
+          <h3 style="margin:0; font-size:12px; color: #fff; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">[STEP 2] 문장 다듬기 (Formulation)</h3>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #86efac;">[Top] 문장 조합</h4>
+              <div id="formTopLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #86efac; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #86efac;">[Middle] 문장 조합</h4>
+              <div id="formMiddleLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #86efac; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #86efac;">[Bottom] 문장 조합</h4>
+              <div id="formBottomLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #86efac; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #86efac;">[Audio] 문장 조합</h4>
+              <div id="formAudioLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #86efac; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+          </div>
+          
+          <h3 style="margin:0; font-size:12px; color: #fff; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">[STEP 3] 대본 복원 (Script Reconstruction)</h3>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #a78bfa;">[Top] 복원된 대본</h4>
+              <div id="reconTopLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #a78bfa; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #a78bfa;">[Middle] 복원된 대본</h4>
+              <div id="reconMiddleLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #a78bfa; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #a78bfa;">[Bottom] 복원된 대본</h4>
+              <div id="reconBottomLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #a78bfa; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #a78bfa;">[Audio] 복원된 대본</h4>
+              <div id="reconAudioLog" style="width: 100%; height: 70px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #a78bfa; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+          </div>
+
+          <h3 style="margin:0; font-size:12px; color: #fff; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">[STEP 4] 주체 식별 (Entity Resolution)</h3>
+          
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #c084fc;">대명사/지칭어 교체 로그</h4>
+              <div id="entityResolutionLog" style="width: 100%; height: 80px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #c084fc; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+            </div>
+          </div>
+          
+          <h3 style="margin:0; font-size:12px; color: #fff; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">[STEP 5] 핵심 정보 추출 (Fact Extraction)</h3>
+          
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; flex-direction: column;">
+              <h4 style="margin:0 0 4px 0; font-size:10px; color: #fcd34d;">추출된 정보 목록</h4>
+              <div id="infoExtractionLog" style="width: 100%; height: 100px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); color: #fcd34d; border-radius: 4px; padding: 6px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all;">대기 중...</div>
+                      </div>
+            </div>
+
+            <h3 style="margin:0; font-size:12px; color: #fff; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-top: 15px;">[STEP 6] 하이브리드 검색 쿼리 (Search Queries)</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+              <div id="vmQueries" style="display: flex; flex-wrap: wrap; gap: 6px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; padding: 12px; min-height: 40px;">
+                <span style="color:var(--text3); font-size:10px;">대기 중...</span>
+              </div>
+            </div>
+
+            <h3 style="margin:0; font-size:12px; color: #fff; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-top: 15px;">[STEP 7] 교차 검증 소스 탐색 (Found Sources)</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+              <div id="vmSources" style="display: flex; flex-direction: column; gap: 4px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; padding: 12px; min-height: 40px;">
+                <span style="color:var(--text3); font-size:10px;">대기 중...</span>
+              </div>
+            </div>
+
+            <h3 style="margin:0; font-size:12px; color: #fff; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-top: 15px;">[STEP 8] 문서 본문 스크래핑 (Scraped Snippets)</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+              <div id="vmScrapes" style="display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; padding: 12px; min-height: 40px;">
+                <span style="color:var(--text3); font-size:10px;">대기 중...</span>
+              </div>
+            </div>
+            
+            <div style="display: none;">
+              <div id="searchExecutionLog"></div>
+            </div>
+
+          </div>
+        </div>
+        
+        <!-- Integrated Source Verification (Three Circles UI) -->
+      <div class="floating-circles-widget" id="results">
+        <div class="circles-wrapper">
+          <div class="circle-group">
+            <!-- Total Facts -->
+            <div class="circle green" id="circleTotal">
+              <span class="circle-val" id="valTotal">0</span>
+              <span class="circle-lbl">Total<br>Facts</span>
+            </div>
+            <!-- Verified -->
+            <div class="circle blue" id="circleVerified">
+              <span class="circle-val" id="valVerified">0</span>
+              <span class="circle-lbl">Verified<br>Sources</span>
+            </div>
+            <!-- Unverified -->
+            <div class="circle purple" id="circleUnverified">
+              <span class="circle-val" id="valUnverified">0</span>
+              <span class="circle-lbl">Unverified</span>
+            </div>
+            <!-- Refuted -->
+            <div class="circle red" id="circleRefuted">
+              <span class="circle-val" id="valRefuted">0</span>
+              <span class="circle-lbl">Refuted</span>
+            </div>
+          </div>
+        </div>
+  
+        <!-- Memos Section -->
+        <div id="verifiedMemos" style="display: none; width: 100%; margin-top: 20px; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; border: 1px solid rgba(59,130,246,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(59,130,246,0.3); padding-bottom: 10px; margin-bottom: 15px;">
+            <h4 style="margin: 0; font-size: 16px; color: #93c5fd;">Verified Facts</h4>
+          </div>
+          <div id="verifiedList" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 5px;"></div>
+        </div>
+
+        <div id="unverifiedMemos" style="display: none; width: 100%; margin-top: 20px; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; border: 1px solid rgba(168,85,247,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(168,85,247,0.3); padding-bottom: 10px; margin-bottom: 15px;">
+            <h4 style="margin: 0; font-size: 16px; color: #d8b4fe;">Unverified Facts</h4>
+          </div>
+          <div id="unverifiedList" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 5px;"></div>
+        </div>
+
+        <div id="refutedMemos" style="display: none; width: 100%; margin-top: 20px; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; border: 1px solid rgba(239,68,68,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(239,68,68,0.3); padding-bottom: 10px; margin-bottom: 15px;">
+            <h4 style="margin: 0; font-size: 16px; color: #fca5a5;">Refuted Facts</h4>
+          </div>
+          <div id="refutedList" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 5px;"></div>
+        </div>
+      </div>
+
+    </div>
+
+  <!-- Hidden video for capture -->
+  <div id="vidWrap"><video id="vid" autoplay muted></video><canvas id="cvs"></canvas></div>
+
+  <!-- Floating stop button -->
+  <button class="float-stop" id="floatStop">Stop Capture</button>
+
+  <!-- OCR Region Selector Overlay -->
+  <div id="regionOverlay"><div id="regionHint">드래그해서 OCR 영역을 선택하세요</div></div>
+  <div id="regionBox"></div>
+
+  <script>
+  let selfReadPaused = false;
+  let ocrBusy = false;
+  let isCapturing = false;
+
+  const API = 'http://localhost:3777';
+  const OCR_MS = 2000;
+  const SEND_COOLDOWN = 15000;
+  const MIN_NEW = 20;
+
+  let stream = null;
+  let ocrTimer = null;
+  let clockTimer = null;
+  let audioIntervalA = null;
+  let audioIntervalB = null;
+  let mediaRecorderA = null;
+  let mediaRecorderB = null;
+  let startT = 0;
+
+  const whisperWorker = new Worker('whisper-worker.js', { type: 'module' });
+  whisperWorker.postMessage({ type: 'load' });
+  whisperWorker.onmessage = (e) => {
+    if (e.data.status === 'ready') {
+      const wEl = $('s-audio');
+      if (wEl) wEl.querySelector('.step-st').textContent = 'Ready (WebGPU: ' + !e.data.fallback + ')';
+      if (!e.data.fallback) {
+        const el = $('s-audio');
+        if (el) el.querySelector('.step-label').style.color = 'var(--accent)';
+      }
+    } else if (e.data.status === 'complete') {
+      const text = e.data.text.trim();
+      if (text && text.length > 1) {
+        addAudioEntry(text);
+        audioAllText += ' ' + text;
+        pendingAudio += ' ' + text;
+        const ac = $('audioCharCount');
+        if (ac) ac.textContent = audioAllText.length + ' chars';
+        maybeAnalyze();
+      }
+    }
+  };
+
+  let ocrReady = false, lastSend = 0;
+  let lastImageData = null, lastBbox = null;
+  let allText = '';
+  let pendingOCR = '';
+  let pendingAudio = '';
+  let sessionFacts = [];
+  let lastText = '';
+  let analyzing = false;
+  let currentVideoTitle = '';
+  let spatialMemory = [];
+
+  // 구연 루프 / Static 모드
+  let isStatic = false;           // static 모드일 때 GPT 호출 스킵
+  let lastFinalContexts = [];     // 최근 finalContext 저장 (유사도 비교용)
+  let titleCandidates = {};       // { text: count } Top존 제목 후보
+  let lastTitleCheckTime = 0;
+
+  let currentCropX = 0, currentCropY = 0;
+  let videoStartFrames = [];
+  let isVideoLooping = false;
+  let activeRequests = 0;
+  let videoStartTime = 0;
+  let audioAllText = '';
+
+  const $ = id => {
+    const el = document.getElementById(id);
+    if (el) return el;
+    if (pipWindow && !pipWindow.closed) {
+      try {
+        const pipEl = pipWindow.document.getElementById(id);
+        if (pipEl) return pipEl;
+      } catch(e) {}
+    }
+    return null;
+  };
+
+  $('btnStart').addEventListener('click', startCapture);
+  $('btnStop').addEventListener('click', stopCapture);
+  $('floatStop').addEventListener('click', stopCapture);
+
+  // ============ OCR 영역 선택 로직 ============
+  // 실제 화면 좌표(px) 기준으로 저장됨
+  let cropRegion = null; // { x, y, w, h } in screen pixels
+  let dragStart = null;
+
+  const overlay = document.getElementById('regionOverlay');
+  const regionBox = document.getElementById('regionBox');
+
+  $('ocrRegionBtn').addEventListener('click', () => {
+    overlay.classList.add('show');
+  });
+
+  $('regionClear').addEventListener('click', () => {
+    cropRegion = null;
+    $('regionClear').classList.remove('show');
+    $('ocrRegionBtn').classList.remove('active');
+    $('ocrRegionBtn').textContent = '📷 영역 선택';
+    regionBox.style.display = 'none';
+  });
+
+  overlay.addEventListener('mousedown', (e) => {
+    dragStart = { x: e.clientX, y: e.clientY };
+    regionBox.style.display = 'block';
+    regionBox.style.left = e.clientX + 'px';
+    regionBox.style.top = e.clientY + 'px';
+    regionBox.style.width = '0';
+    regionBox.style.height = '0';
+  });
+
+  overlay.addEventListener('mousemove', (e) => {
+    if (!dragStart) return;
+    const x = Math.min(e.clientX, dragStart.x);
+    const y = Math.min(e.clientY, dragStart.y);
+    const w = Math.abs(e.clientX - dragStart.x);
+    const h = Math.abs(e.clientY - dragStart.y);
+    regionBox.style.left = x + 'px';
+    regionBox.style.top = y + 'px';
+    regionBox.style.width = w + 'px';
+    regionBox.style.height = h + 'px';
+  });
+
+  overlay.addEventListener('mouseup', (e) => {
+    if (!dragStart) return;
+    const x = Math.min(e.clientX, dragStart.x);
+    const y = Math.min(e.clientY, dragStart.y);
+    const w = Math.abs(e.clientX - dragStart.x);
+    const h = Math.abs(e.clientY - dragStart.y);
+    dragStart = null;
+    overlay.classList.remove('show');
+
+    if (w > 20 && h > 20) {
+      cropRegion = { x, y, w, h };
+      $('ocrRegionBtn').classList.add('active');
+      $('ocrRegionBtn').textContent = `📷 영역 활성 (${Math.round(w)}×${Math.round(h)})`;
+      $('regionClear').classList.add('show');
+    }
+  });
+  // ============ /OCR 영역 선택 ============
+
+  fetch(API + '/api/analyze')
+    .then(() => { ocrReady = true; setStep('ocr', 'done', 'Ready'); })
+    .catch(() => setStep('ocr', 'fail', 'Server offline'));
+
+  let pipWindow = null;
+
+  async function startCapture() {
+    try {
+      isCapturing = true;
+      setStep('capture', 'running', 'Requesting...');
+      setStatus('on', 'Requesting...');
+      
+      const popupOpened = await openFloatingPanel();
+
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'never' },
+        audio: true, 
+        preferCurrentTab: false
+      });
+
+      const vid = $('vid');
+      vid.srcObject = stream;
+
+      if (stream.getAudioTracks().length === 0) {
+        alert("마이크/탭 오디오 공유가 꺼져있습니다! 화면 공유 시 '탭 오디오 공유(Share tab audio)' 체크박스를 반드시 체크해주세요!");
+      }
+
+      await new Promise((resolve) => {
+        vid.onloadedmetadata = () => resolve();
+        setTimeout(resolve, 3000);
+      });
+      vid.play();
+
+      stream.getVideoTracks()[0].addEventListener('ended', stopCapture);
+
+      $('startScreen').style.display = 'none';
+      if (!popupOpened) {
+        $('activeContent').style.display = 'flex';
+        console.log('Floating window blocked, falling back to main tab.');
+      }
+      $('floatStop').classList.add('show');
+      
+      startT = Date.now();
+      clockTimer = setInterval(updateClock, 1000);
+      setStep('capture', 'done', vid.videoWidth + 'x' + vid.videoHeight);
+      setStatus('on', 'Monitoring');
+
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) {
+        const audioStream = new MediaStream([audioTrack]);
+        
+        const createRecorder = () => {
+          const rec = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+          rec.ondataavailable = async (e) => {
+            if (e.data.size > 0 && isCapturing) {
+              try {
+                const arrayBuffer = await e.data.arrayBuffer();
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                const channelData = audioBuffer.getChannelData(0);
+                
+                // --- 무음(Silence) 감지: 할루시네이션 방지 ---
+                let sumSquares = 0;
+                for (let i = 0; i < channelData.length; i++) {
+                  sumSquares += channelData[i] * channelData[i];
+                }
+                const rms = Math.sqrt(sumSquares / channelData.length);
+                
+                if (rms > 0.005) {
+                  whisperWorker.postMessage({ type: 'transcribe', audio: channelData });
+                }
+              } catch (err) {
+                console.error('Audio decode error:', err);
+              }
+            }
+          };
+          return rec;
+        };
+
+        mediaRecorderA = createRecorder();
+        mediaRecorderB = createRecorder();
+
+        // A는 즉시 시작 (4초 단위)
+        mediaRecorderA.start();
+        audioIntervalA = setInterval(() => {
+          if (mediaRecorderA && mediaRecorderA.state === 'recording' && isCapturing) {
+            mediaRecorderA.stop();
+            mediaRecorderA.start();
+          }
+        }, 4000);
+
+        // B는 2초 뒤에 시작 (4초 단위) -> 결과적으로 2초마다 4초 분량의 컨텍스트를 Whisper에 전달!
+        setTimeout(() => {
+          if (!isCapturing) return;
+          mediaRecorderB.start();
+          audioIntervalB = setInterval(() => {
+            if (mediaRecorderB && mediaRecorderB.state === 'recording' && isCapturing) {
+              mediaRecorderB.stop();
+              mediaRecorderB.start();
+            }
+          }, 4000);
+        }, 2000);
+        
+        setStep('audio', 'running', 'Listening');
+      } else {
+        setStep('audio', 'fail', 'No audio track');
+      }
+
+      ocrLoop();
+    } catch (e) {
+      setStep('capture', 'fail', e.message);
+      setStatus('off', 'Idle');
+      isCapturing = false;
+    }
+  }
+
+  async function openFloatingPanel() {
+    if ('documentPictureInPicture' in window) {
+      try {
+        pipWindow = await documentPictureInPicture.requestWindow({ width: 450, height: 700 });
+        const style = pipWindow.document.createElement('style');
+        style.textContent = document.querySelector('style').textContent;
+        pipWindow.document.head.appendChild(style);
+        document.querySelectorAll('link[rel="preconnect"], link[href*="fonts"]').forEach(l => {
+          pipWindow.document.head.appendChild(l.cloneNode(true));
+        });
+        pipWindow.document.body.style.cssText = 'font-family:var(--font);background:var(--bg);color:var(--text);margin:0;overflow:hidden;display:flex;flex-direction:column;height:100vh;';
+        const content = $('activeContent');
+        pipWindow.document.body.appendChild(content);
+        content.style.display = 'flex';
+        pipWindow.addEventListener('pagehide', () => {
+          document.body.insertBefore(content, $('vidWrap'));
+          content.style.display = 'none';
+          pipWindow = null;
+        });
+        return true;
+      } catch (e) { console.log(e); }
+    }
+
+    // Fallback: window.open popup
+    const w = 450, h = 700;
+    const left = screen.width - w - 30;
+    pipWindow = window.open('', 'FactLens', `width=${w},height=${h},left=${left},top=80,resizable=yes`);
+    if (pipWindow) {
+      pipWindow.document.title = 'FactLens';
+      const style = pipWindow.document.createElement('style');
+      style.textContent = document.querySelector('style').textContent;
+      pipWindow.document.head.appendChild(style);
+      document.querySelectorAll('link[rel="preconnect"], link[href*="fonts"]').forEach(l => {
+        pipWindow.document.head.appendChild(l.cloneNode(true));
+      });
+      pipWindow.document.body.style.cssText = 'font-family:var(--font);background:var(--bg);color:var(--text);margin:0;overflow:hidden;display:flex;flex-direction:column;height:100vh;';
+      const content = $('activeContent');
+      pipWindow.document.body.appendChild(content);
+      content.style.display = 'flex';
+      pipWindow.addEventListener('beforeunload', () => {
+        document.body.insertBefore(content, $('vidWrap'));
+        content.style.display = 'none';
+        pipWindow = null;
+      });
+      return true;
+    }
+    return false;
+  }
+
+  function stopCapture() {
+    isCapturing = false;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    if (ocrTimer) { clearInterval(ocrTimer); ocrTimer = null; }
+    if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+    if (audioIntervalA) { clearInterval(audioIntervalA); audioIntervalA = null; }
+    if (audioIntervalB) { clearInterval(audioIntervalB); audioIntervalB = null; }
+    if (mediaRecorderA && mediaRecorderA.state !== 'inactive') { mediaRecorderA.stop(); mediaRecorderA = null; }
+    if (mediaRecorderB && mediaRecorderB.state !== 'inactive') { mediaRecorderB.stop(); mediaRecorderB = null; }
+
+    const content = $('activeContent');
+    if (pipWindow) {
+      try {
+        if (content) document.body.insertBefore(content, $('vidWrap'));
+        pipWindow.close();
+      } catch(e) {}
+      pipWindow = null;
+    }
+
+    $('vid').srcObject = null;
+    if(content) content.style.display = 'none';
+    $('startScreen').style.display = 'flex';
+    $('floatStop').classList.remove('show');
+    setStatus('off', 'Idle');
+    
+    // Reset pipeline UI
+    ['capture','ocr','audio','preprocess','extract','verify'].forEach(id => {
+      setStep(id, 'pending');
+    });
+    
+    lastImageData = null;
+    lastBbox = null;
+    lastDataUrl = '';
+    isStatic = false;
+    lastFinalContexts = [];
+    titleCandidates = {};
+    currentVideoTitle = '';
+    const tc = $('videoTitleContainer');
+    if (tc) tc.innerHTML = '';
+    // positionCache 초기화 (에러 방지용 안전 참조)
+    if (typeof positionCache !== 'undefined') {
+      positionCache.Top.text = ''; positionCache.Top.ts = 0;
+      positionCache.Middle.text = ''; positionCache.Middle.ts = 0;
+      positionCache.Bottom.text = ''; positionCache.Bottom.ts = 0;
+    }
+  }
+
+  function updateClock() {
+    const d = Math.floor((Date.now() - startT)/1000);
+    const m = String(Math.floor(d/60)).padStart(2,'0');
+    const s = String(d%60).padStart(2,'0');
+    const t = `${m}:${s}`;
+    const c = $('timer');
+    if (c) c.textContent = t;
+  }
+
+  let lastDataUrl = '';
+  // 위치별 중복 방지용 캐시 (Top은 30s, Middle/Bottom은 10s)
+  const positionCache = { Top: { text: '', ts: 0 }, Middle: { text: '', ts: 0 }, Bottom: { text: '', ts: 0 } };
+
+  function getZone(cy, height) {
+    if (cy < height * 0.28) return 'Top';
+    if (cy > height * 0.72) return 'Bottom';
+    return 'Middle';
+  }
+
+  async function runOCR() {
+    // ★ 중요: 캡처가 멈추면 루프 즉시 종료
+    if (!isCapturing || !stream || !ocrReady) return;
+    if (activeRequests >= 5) {
+      setTimeout(runOCR, 200);
+      return;
+    }
+
+    const vt = stream.getVideoTracks()[0];
+    if (!vt || vt.readyState !== 'live') return;
+
+    const vid = $('vid'), cvs = $('cvs'), ctx = cvs.getContext('2d');
+    const vw = vid.videoWidth, vh = vid.videoHeight;
+    if (!vw || !vh) {
+      setStep('ocr', 'running', 'Waiting for video...');
+      if (isCapturing) setTimeout(runOCR, 500);
+      return;
+    }
+
+    const scale = Math.min(1, 1280 / vw);
+    cvs.width = Math.round(vw * scale);
+    cvs.height = Math.round(vh * scale);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(vid, 0, 0, cvs.width, cvs.height);
+
+    // ═══ 자동 모션 감지: 움직이는 영역만 OCR ═══
+    const dataUrl = cvs.toDataURL('image/jpeg', 0.7);
+    if (!dataUrl || dataUrl === 'data:,') {
+      if (isCapturing) setTimeout(runOCR, 3000);
+      return;
+    }
+
+    const imageData = ctx.getImageData(0, 0, cvs.width, cvs.height);
+    const pxData = imageData.data;
+    let changedPixels = 0;
+    let minX = cvs.width, minY = cvs.height, maxX = 0, maxY = 0;
+
+    if (lastImageData) {
+      const prev = lastImageData.data;
+      for (let i = 0; i < pxData.length; i += 16) {
+        const diff = Math.abs(pxData[i] - prev[i]) + Math.abs(pxData[i+1] - prev[i+1]) + Math.abs(pxData[i+2] - prev[i+2]);
+        if (diff > 30) {
+          changedPixels++;
+          const idx = i / 4;
+          const x = idx % cvs.width;
+          const y = Math.floor(idx / cvs.width);
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+    }
+    lastImageData = imageData;
+
+    // 움직임이 충분히 있으면 bbox 갱신
+    if (changedPixels >= 80) lastBbox = { minX, minY, maxX, maxY };
+
+    // 전송할 이미지: bbox 있으면 그 영역만, 없으면 전체
+    let sendDataUrl = dataUrl;
+    let cropOffsetX = 0, cropOffsetY = 0;
+    if (lastBbox) {
+      const pad = 60;
+      const cx = Math.max(0, lastBbox.minX - pad);
+      const cy2 = Math.max(0, lastBbox.minY - pad);
+      const cw = Math.min(cvs.width - cx, (lastBbox.maxX - lastBbox.minX) + pad * 2);
+      const ch = Math.min(cvs.height - cy2, (lastBbox.maxY - lastBbox.minY) + pad * 2);
+      if (cw > 150 && ch > 100) {
+        const cropCvs = document.createElement('canvas');
+        cropCvs.width = cw; cropCvs.height = ch;
+        cropCvs.getContext('2d').drawImage(cvs, cx, cy2, cw, ch, 0, 0, cw, ch);
+        sendDataUrl = cropCvs.toDataURL('image/jpeg', 0.85);
+        cropOffsetX = cx; cropOffsetY = cy2;
+      }
+    }
+    // ═══════════════════════════════════════════
+
+    // 완전히 동일한 프레임이면 스킵
+    if (sendDataUrl === lastDataUrl) {
+      if (isCapturing) setTimeout(runOCR, 1500);
+      return;
+    }
+    lastDataUrl = sendDataUrl;
+
+    setStep('ocr', 'running', 'Sending to server...');
+    activeRequests++;
+
+    try {
+      const res = await fetch(API + '/api/analyze/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: sendDataUrl })
+      });
+      activeRequests--;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      if (data.text && data.lines?.length > 0) {
+        const now = Date.now();
+        const freshLines = []; // { zone, text } 형식
+
+        for (const line of data.lines) {
+          if (!line.text || line.text.trim().length < 2) continue;
+
+          const zone = getZone(line.cy, cvs.height);
+          const cooldown = zone === 'Top' ? 30000 : 10000;
+          const cache = positionCache[zone];
+
+          // 위치별 중복 체크: 동일 텍스트가 쿨다운 안에 있으면 스킵
+          const cleanText = line.text.replace(/\s+/g, '').toLowerCase();
+          const cleanCached = (cache.text || '').replace(/\s+/g, '').toLowerCase();
+          if (cleanCached.includes(cleanText) && (now - cache.ts) < cooldown) continue;
+
+          // 전체 누적 텍스트에서도 최근 500자 내 중복이면 스킵
+          const recentClean = allText.slice(-500).replace(/[^a-zA-Z0-9가-힣]/g, '').toLowerCase();
+          if (recentClean.includes(cleanText)) continue;
+
+          // 위치 캐시 갱신
+          positionCache[zone].text = (cache.text + ' ' + line.text).slice(-200);
+          positionCache[zone].ts = now;
+
+          freshLines.push({ zone, text: line.text, cx: line.cx, cy: line.cy });
+          allText += '\n' + `[${zone}] ` + line.text;
+        }
+
+        if (freshLines.length > 0) {
+          pendingOCR += '\n' + freshLines.map(l => `[${l.zone}] ${l.text}`).join('\n');
+
+          // ★ 제목 감지: Top 또는 Bottom 구역의 반복 텍스트 추적 (쇼츠 제목은 주로 Bottom에 위치)
+          const edgeLines = freshLines.filter(l => l.zone === 'Top' || l.zone === 'Bottom');
+          const now2 = Date.now();
+          for (const el of edgeLines) {
+            const key = el.text.trim();
+            if (key.length < 5) continue; // 너무 짧은 텍스트 무시
+            
+            // 유튜브 기본 UI 텍스트 무시
+            const lowerKey = key.toLowerCase();
+            if (lowerKey.includes('로그인하면') || lowerKey.includes('페이지 기록') || lowerKey.includes('좋아요를 표시') || lowerKey.includes('댓글을 달거나') || lowerKey.includes('탐색 음악') || lowerKey.includes('구독')) {
+              continue;
+            }
+            
+            titleCandidates[key] = (titleCandidates[key] || 0) + 1;
+          }
+
+          // 3초 주기로 체크 (4번 이상 등장한 텍스트를 고정된 제목으로 확정)
+          if (now2 - lastTitleCheckTime > 3000) {
+            lastTitleCheckTime = now2;
+            let bestKey = '', bestCount = 0;
+            for (const [k, c] of Object.entries(titleCandidates)) {
+              if (c > bestCount && c >= 4) { bestCount = c; bestKey = k; }
+            }
+            if (bestKey && bestKey !== currentVideoTitle) {
+              const oldTitle = currentVideoTitle;
+              currentVideoTitle = bestKey;
+              // 새 제목 새로 감지 → 리셋
+              if (oldTitle) {
+                allText = ''; pendingOCR = ''; pendingAudio = '';
+                lastFinalContexts = []; isStatic = false;
+                titleCandidates = {};
+                const cc = $('charCount'); if (cc) cc.textContent = '0 chars';
+                const ac = $('audioCharCount'); if (ac) ac.textContent = '0 chars';
+                addOcrEntry('System', `===== 새 영상 감지: "${currentVideoTitle}" =====`, '#60a5fa');
+              }
+              // 제목 UI 공혁
+              const tc = $('videoTitleContainer');
+              if (tc) tc.innerHTML = `<div style="background:#1e293b;color:#60a5fa;padding:8px 14px;border-radius:8px;font-weight:600;font-size:12px;border:1px solid #334155;">🎥 현재 영상: ${esc(currentVideoTitle)}</div>`;
+              setStep('ocr', 'done', `Title: ${currentVideoTitle.slice(0, 20)}`);
+            }
+          }
+
+          // ★ 뺄그 수정: ID를 charCount (HTML과 일치)로 수정
+          const cc = $('charCount');
+          if (cc) cc.textContent = allText.length + ' chars';
+
+          // LIVE OCR 패널에 위치별 색상으로 표시
+          const zoneColors = { Top: '#f59e0b', Middle: '#e8ecf4', Bottom: '#22c55e' };
+          freshLines.forEach(l => addOcrEntry(l.zone, l.text, zoneColors[l.zone]));
+
+          setStep('ocr', 'done', `${freshLines.length} lines`);
+
+          fetch(API + '/api/analyze/quota')
+            .then(r => r.json())
+            .then(d => {
+              const qEl = $('quotaInfo');
+              if (qEl) qEl.textContent = `API: ${d.quota || 0}/100,000`;
+            }).catch(() => {});
+
+          maybeAnalyze();
+        } else {
+          setStep('ocr', 'done', 'No new text');
+        }
+      } else {
+        setStep('ocr', 'done', 'No text');
+      }
+    } catch (e) {
+      activeRequests--;
+      console.error('[OCR]', e.message);
+      setStep('ocr', 'fail', e.message.slice(0, 40));
+    }
+
+    // ★ 버그 수정: Stop 이후 루프 방지
+    if (isCapturing) setTimeout(runOCR, 1200); // 1.2초 주기 (기존 2초에서 단축)
+  }
+
+  function ocrLoop() {
+    if (!stream || !ocrReady || !isCapturing) return;
+    runOCR();
+  }
+
+  function jaccard(a, b) {
+    const s1 = new Set(a), s2 = new Set(b);
+    const inter = [...s1].filter(x => s2.has(x)).length;
+    const union = new Set([...s1, ...s2]).size;
+    return union > 0 ? inter / union : 0;
+  }
+
+  // 단어 기반 유사도 (문장 비교에 더 정확)
+  function wordJaccard(a, b) {
+    const wa = new Set(a.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    const wb = new Set(b.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    if (wa.size === 0 && wb.size === 0) return 1;
+    const inter = [...wa].filter(w => wb.has(w)).length;
+    const union = new Set([...wa, ...wb]).size;
+    return union > 0 ? inter / union : 0;
+  }
+
+  function findNew(old, fresh) {
+    const oldW = new Set(old.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    return fresh.split(/\s+/).filter(w => !oldW.has(w.toLowerCase()) && w.length > 2).join(' ');
+  }
+
+  function maybeAnalyze() {
+    // ★ isCapturing + static 모드 체크
+    if (!isCapturing || analyzing) return;
+    if (isStatic) {
+      // static 모드일 때 오디오만 있으면 여전히 처리
+      const hasAudio = pendingAudio.trim().length > 10;
+      if (!hasAudio) return;
+    }
+    const hasAudio = pendingAudio.trim().length > 5;
+    const hasMajorOCR = pendingOCR.trim().length > 30;
+    if (!hasAudio && !hasMajorOCR) return;
+    if ((Date.now() - lastSend) < SEND_COOLDOWN) return;
+    analyze();
+  }
+
+  async function analyze() {
+    if (analyzing) return;
+    analyzing = true;
+    lastSend = Date.now();
+    
+    const ocrPayload = pendingOCR;
+    const audioPayload = pendingAudio;
+    pendingOCR = '';
+    pendingAudio = '';
+
+    setStep('preprocess', 'running', 'GPT Cleaning...');
+    setStatus('on', 'Preprocessing...');
+
+    try {
+      const existingFacts = globalFacts.map(f => f.claim);
+      const preRes = await fetch(API + '/api/analyze/preprocess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ocrText: ocrPayload, audioText: audioPayload, existingFacts })
+      });
+      const preData = await preRes.json();
+      
+      if (preData.wordLogs?.length) {
+        const tLog = $('ocrTopLog'); if (tLog && tLog.textContent === '대기 중...') tLog.textContent = '';
+        const mLog = $('ocrMiddleLog'); if (mLog && mLog.textContent === '대기 중...') mLog.textContent = '';
+        const bLog = $('ocrBottomLog'); if (bLog && bLog.textContent === '대기 중...') bLog.textContent = '';
+        const aLog = $('audioCorrectionLog'); if (aLog && aLog.textContent === '대기 중...') aLog.textContent = '';
+        
+        preData.wordLogs.forEach(log => {
+          if (log.includes('[Top]')) {
+            if (tLog) { tLog.textContent += log + '\n'; tLog.scrollTop = tLog.scrollHeight; }
+          } else if (log.includes('[Middle]')) {
+            if (mLog) { mLog.textContent += log + '\n'; mLog.scrollTop = mLog.scrollHeight; }
+          } else if (log.includes('[Bottom]')) {
+            if (bLog) { bLog.textContent += log + '\n'; bLog.scrollTop = bLog.scrollHeight; }
+          } else if (log.includes('[Audio]') || log.toLowerCase().includes('audio')) {
+            if (aLog) { aLog.textContent += log + '\n'; aLog.scrollTop = aLog.scrollHeight; }
+          } else {
+            // 위치 태그가 없는 OCR 로그는 Middle로 기본 분류
+            if (log.includes('[OCR]')) {
+              if (mLog) { mLog.textContent += log + '\n'; mLog.scrollTop = mLog.scrollHeight; }
+            } else {
+              if (aLog) { aLog.textContent += log + '\n'; aLog.scrollTop = aLog.scrollHeight; }
+            }
+          }
+        });
+      }
+      
+      if (preData.sentenceLogs && typeof preData.sentenceLogs === 'object' && !Array.isArray(preData.sentenceLogs)) {
+        const formTop = $('formTopLog'); if (formTop && formTop.textContent === '대기 중...') formTop.textContent = '';
+        const formMid = $('formMiddleLog'); if (formMid && formMid.textContent === '대기 중...') formMid.textContent = '';
+        const formBot = $('formBottomLog'); if (formBot && formBot.textContent === '대기 중...') formBot.textContent = '';
+        const formAud = $('formAudioLog'); if (formAud && formAud.textContent === '대기 중...') formAud.textContent = '';
+
+        if (preData.sentenceLogs.Top?.length && formTop) {
+          formTop.textContent += preData.sentenceLogs.Top.join('\n') + '\n';
+          formTop.scrollTop = formTop.scrollHeight;
+        }
+        if (preData.sentenceLogs.Middle?.length && formMid) {
+          formMid.textContent += preData.sentenceLogs.Middle.join('\n') + '\n';
+          formMid.scrollTop = formMid.scrollHeight;
+        }
+        if (preData.sentenceLogs.Bottom?.length && formBot) {
+          formBot.textContent += preData.sentenceLogs.Bottom.join('\n') + '\n';
+          formBot.scrollTop = formBot.scrollHeight;
+        }
+        if (preData.sentenceLogs.Audio?.length && formAud) {
+          formAud.textContent += preData.sentenceLogs.Audio.join('\n') + '\n';
+          formAud.scrollTop = formAud.scrollHeight;
+        }
+      } else if (preData.sentenceLogs?.length) {
+        // Fallback for old array format
+        const formAud = $('formAudioLog');
+        if (formAud && formAud.textContent === '대기 중...') formAud.textContent = '';
+        if (formAud) {
+          formAud.textContent += preData.sentenceLogs.join('\n') + '\n';
+          formAud.scrollTop = formAud.scrollHeight;
+        }
+      }
+      
+      if (preData.reconstructedScripts) {
+        const rTop = $('reconTopLog'); if (rTop && rTop.textContent === '대기 중...') rTop.textContent = '';
+        const rMid = $('reconMiddleLog'); if (rMid && rMid.textContent === '대기 중...') rMid.textContent = '';
+        const rBot = $('reconBottomLog'); if (rBot && rBot.textContent === '대기 중...') rBot.textContent = '';
+        const rAud = $('reconAudioLog'); if (rAud && rAud.textContent === '대기 중...') rAud.textContent = '';
+
+        if (preData.reconstructedScripts.Top && rTop) {
+          rTop.textContent = preData.reconstructedScripts.Top;
+          rTop.scrollTop = rTop.scrollHeight;
+        }
+        if (preData.reconstructedScripts.Middle && rMid) {
+          rMid.textContent = preData.reconstructedScripts.Middle;
+          rMid.scrollTop = rMid.scrollHeight;
+        }
+        if (preData.reconstructedScripts.Bottom && rBot) {
+          rBot.textContent = preData.reconstructedScripts.Bottom;
+          rBot.scrollTop = rBot.scrollHeight;
+        }
+        if (preData.reconstructedScripts.Audio && rAud) {
+          rAud.textContent = preData.reconstructedScripts.Audio;
+          rAud.scrollTop = rAud.scrollHeight;
+        }
+      }
+
+      // Step 4 UI 업데이트
+      if (preData.resolutionLogs?.length) {
+        const rLog = $('entityResolutionLog');
+        if (rLog && rLog.textContent === '대기 중...') rLog.textContent = '';
+        if (rLog) {
+          rLog.textContent += preData.resolutionLogs.join('\n') + '\n';
+          rLog.scrollTop = rLog.scrollHeight;
+        }
+      }
+
+      // Step 5 UI 업데이트 (Master Context + Facts)
+      if (preData.infoLogs) {
+        const iLog = $('infoExtractionLog');
+        if (iLog && iLog.textContent === '대기 중...') iLog.textContent = '';
+        if (iLog) {
+          iLog.textContent += `[마스터 사건]\n${preData.infoLogs.masterEvent || ''}\n\n`;
+          if (preData.infoLogs.extractedInfoLogs && Array.isArray(preData.infoLogs.extractedInfoLogs)) {
+            iLog.textContent += preData.infoLogs.extractedInfoLogs.join('\n') + '\n';
+          }
+          iLog.scrollTop = iLog.scrollHeight;
+        }
+      }
+
+      setStep('preprocess', 'done', 'Preprocessed');
+      
+      if (!preData.finalContext?.trim()) {
+         setStatus('on', 'Monitoring');
+         analyzing = false;
+         return;
+      }
+
+      // ★ 루프/Static 감지: 최근 finalContext와 유사도 비교
+      const newCtx = preData.finalContext.trim();
+      let maxSim = 0;
+      for (const prev of lastFinalContexts) {
+        const sim = wordJaccard(newCtx, prev);
+        if (sim > maxSim) maxSim = sim;
+      }
+      lastFinalContexts.push(newCtx);
+      if (lastFinalContexts.length > 5) lastFinalContexts.shift();
+
+      if (maxSim > 0.72) {
+        // 루프 감지 → Static 모드 진입
+        if (!isStatic) {
+          isStatic = true;
+          setStep('preprocess', 'skip', 'Static (루프 감지)');
+          addOcrEntry('System', `⏸ 영상 유사 루프 감지 (${Math.round(maxSim*100)}% 유사) — Static 모드`, '#f59e0b');
+          setStatus('on', 'Static Mode');
+        }
+        setStatus('on', 'Monitoring');
+        analyzing = false;
+        return;
+      } else {
+        // 새 콘텐츠 → Static 해제
+        if (isStatic) {
+          isStatic = false;
+          addOcrEntry('System', '▶ Static 모드 해제 — 새로운 콘텐츠 감지', '#22c55e');
+        }
+      }
+
+      if (preData.infoLogs && preData.infoLogs.facts) {
+        setStep('extract', 'done', 'Fact Extraction Complete');
+        setStatus('on', 'Verifying...');
+
+        setStep('search', 'pending', 'Waiting...');
+        setStep('scrape', 'pending', 'Waiting...');
+        setStep('verify_ai', 'pending', 'Waiting...');
+        
+        const vQ = $('vmQueries'); if (vQ) vQ.innerHTML = '<span style="color:var(--text3); font-size:10px;">대기 중...</span>';
+        const vS = $('vmSources'); if (vS) vS.innerHTML = '<span style="color:var(--text3); font-size:10px;">대기 중...</span>';
+        const vSc = $('vmScrapes'); if (vSc) vSc.innerHTML = '<span style="color:var(--text3); font-size:10px;">대기 중...</span>';
+        const sLog = $('searchExecutionLog'); if (sLog) sLog.innerHTML = '대기 중...';
+
+        const res = await fetch(API + '/api/analyze/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ infoLogs: preData.infoLogs })
+        });
+        
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop();
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.substring(6);
+              try {
+                const event = JSON.parse(dataStr);
+                
+                if (event.type === 'step') {
+                  setStep(event.step, event.status, event.detail);
+                } else if (event.type === 'search_query') {
+                  const vmQueries = $('vmQueries');
+                  if (vmQueries && vmQueries.textContent.includes('대기 중...')) vmQueries.textContent = '';
+                  if (vmQueries) vmQueries.innerHTML += `<span style="background:rgba(59,130,246,0.2); border:1px solid rgba(59,130,246,0.5); padding:2px 8px; border-radius:12px; font-size:11px; color:#bfdbfe;">${escapeHTML(event.query)}</span>`;
+                } else if (event.type === 'search_found') {
+                  const vmSources = $('vmSources');
+                  if (vmSources && vmSources.textContent.includes('대기 중...')) vmSources.textContent = '';
+                  if (vmSources) {
+                    event.sources.forEach(src => {
+                      vmSources.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); padding:4px 8px; border-radius:4px;">
+                        <span style="font-size:11px; color:#86efac; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%;">${escapeHTML(src.title || src.url)}</span>
+                        <a href="${escapeHTML(src.url)}" target="_blank" style="font-size:10px; color:#60a5fa; text-decoration:none;">Link ↗</a>
+                      </div>`;
+                    });
+                  }
+                } else if (event.type === 'scrape_snippet') {
+                  const vmScrapes = $('vmScrapes');
+                  if (vmScrapes && vmScrapes.textContent.includes('대기 중...')) vmScrapes.textContent = '';
+                  if (vmScrapes) {
+                    vmScrapes.innerHTML += `
+                      <div style="background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.3); border-radius:4px; margin-bottom:6px;">
+                        <div style="padding:4px 8px; border-bottom:1px dashed rgba(168,85,247,0.3); font-size:10px; color:#d8b4fe; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                          ${escapeHTML(event.url)}
+                        </div>
+                        <div style="padding:6px 8px; font-size:10px; color:#e9d5ff; font-family:monospace; max-height:80px; overflow-y:auto; line-height:1.4; white-space:pre-wrap;">${escapeHTML(event.snippet)}</div>
+                      </div>
+                    `;
+                  }
+                } else if (event.type === 'log') {
+                  const searchLog = $('searchExecutionLog');
+                  if (searchLog && searchLog.textContent === '대기 중...') searchLog.textContent = '';
+                  if (searchLog) {
+                    const color = event.message.includes('[Search]') ? '#fcd34d' : event.message.includes('[Found]') ? '#4ade80' : event.message.includes('[Scrape]') ? '#a78bfa' : event.message.includes('[Verify]') ? '#38bdf8' : '#9ca3af';
+                    searchLog.innerHTML += `<div style="margin-bottom:4px; color:${color};">${escapeHTML(event.message)}</div>`;
+                    searchLog.scrollTop = searchLog.scrollHeight;
+                  }
+                } else if (event.type === 'complete') {
+                  const verifyReport = event.data;
+                  globalFacts = [...globalFacts, ...verifyReport.results];
+                  renderThreeCircles(verifyReport);
+                } else if (event.type === 'error') {
+                  setStep('verify_ai', 'fail', event.error || event.details);
+                }
+              } catch (err) {
+                console.error("SSE Parse Error:", err);
+              }
+            }
+          }
+        }
+      } else {
+        setStep('extract', 'done', 'No facts to verify');
+      }
+      setStatus('on', 'Monitoring');
+    } catch (e) {
+      setStep('extract', 'fail', e.message);
+      setStatus('on', 'Monitoring');
+    } finally {
+      analyzing = false;
+    }
+  }
+
+  
+    let globalFacts = [];
+  
+    function setStep(id, s, detail) {
+    const node = $(`s-${id}`);
+    if (!node) return;
+    node.setAttribute('data-s', s);
+    const icon = node.querySelector('.step-icon');
+    const st = node.querySelector('.step-st');
+    if (s === 'running') icon.innerHTML = '<div class="spinner"></div>';
+    else if (s === 'done') icon.textContent = 'OK';
+    else if (s === 'fail') icon.textContent = '!';
+    else icon.textContent = '-';
+    if(st) st.textContent = detail || '';
+  }
+
+  function setStatus(type, txt) {
+    const d = document.querySelector('.status-dot');
+    const l = document.querySelector('.status-text');
+    if(d) d.className = 'status-dot ' + type;
+    if(l) l.textContent = txt;
+  }
+
+  function addEntry(text, isNew) {
+    const body = $('feedBody');
+    if(!body) return;
+    const empty = body.querySelector('.feed-empty');
+    if (empty) empty.remove();
+    const now = new Date();
+    const t = `${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const div = document.createElement('div');
+    div.className = 'entry';
+    div.innerHTML = `<span class="t-time">${t}</span>${isNew ? '<span class="t-new">[NEW] </span>' : ''}<span>${esc(text.slice(0,180))}</span>`;
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
+    while (body.children.length > 40) body.removeChild(body.firstChild);
+  }
+
+  function addOcrEntry(zone, text, color) {
+    const body = $('feedBody');
+    if (!body) return;
+    const empty = body.querySelector('.feed-empty');
+    if (empty) empty.remove();
+    const now = new Date();
+    const t = `${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const div = document.createElement('div');
+    div.className = 'entry';
+    div.innerHTML = `<span class="t-time">${t}</span><span style="color:${color};font-size:9px;font-weight:700;margin-right:4px;">[${zone}]</span><span>${esc(text.slice(0, 180))}</span>`;
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
+    while (body.children.length > 60) body.removeChild(body.firstChild);
+  }
+
+  function addAudioEntry(text) {
+    const body = $('audioFeedBody');
+    if(!body) return;
+    const now = new Date();
+    const t = `${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const div = document.createElement('div');
+    div.className = 'entry';
+    div.innerHTML = `<span class="t-time" style="color: #4caf50;">${t}</span><span>${esc(text)}</span>`;
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
+    while (body.children.length > 40) body.removeChild(body.firstChild);
+  }
+
+  function esc(t) { const d = document.createElement('div'); d.textContent = t||''; return d.innerHTML; }
+
+
+    window.toggleMemoSection = function(type) {
+      const verifiedSection = $('verifiedMemos');
+      const unverifiedSection = $('unverifiedMemos');
+      
+      if (type === 'verified') {
+        if (verifiedSection.style.display === 'block') {
+          verifiedSection.style.display = 'none';
+        } else {
+          verifiedSection.style.display = 'block';
+          unverifiedSection.style.display = 'none';
+        }
+      } else {
+        if (unverifiedSection.style.display === 'block') {
+          unverifiedSection.style.display = 'none';
+        } else {
+          unverifiedSection.style.display = 'block';
+          verifiedSection.style.display = 'none';
+        }
+      }
+      
+      const activeContent = $('activeContent');
+      if(activeContent) activeContent.scrollTo({ top: activeContent.scrollHeight, behavior: 'smooth' });
+    };
+
+    window.closeMemos = function() {
+      const v = $('verifiedMemos'); if (v) v.style.display = 'none';
+      const u = $('unverifiedMemos'); if (u) u.style.display = 'none';
+    };
+  
+    // Inline handlers replaced with Event Delegation below
+  
+    function escapeHTML(str) {
+      return (str || '').replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[tag] || tag));
+    }
+  
+    function renderThreeCircles(data) {
+      const el = $('results');
+      if(el) el.classList.add('show');
+      
+      const vTotal = $('valTotal'); if (vTotal) vTotal.textContent = globalFacts.length || 0;
+      const vVerified = $('valVerified'); if (vVerified) vVerified.textContent = globalFacts.filter(f=>f.verification?.status==='VERIFIED').length || 0;
+      const vUnverified = $('valUnverified'); if (vUnverified) vUnverified.textContent = globalFacts.filter(f=>f.verification?.status==='UNVERIFIED').length || 0;
+      const vRefuted = $('valRefuted'); if (vRefuted) vRefuted.textContent = globalFacts.filter(f=>f.verification?.status==='REFUTED').length || 0;
+      
+      const verifiedList = $('verifiedList');
+      const unverifiedList = $('unverifiedList');
+      const refutedList = $('refutedList');
+      
+      if (!verifiedList || !unverifiedList || !refutedList) return;
+      
+      verifiedList.innerHTML = '';
+      unverifiedList.innerHTML = '';
+      refutedList.innerHTML = '';
+      
+      const cVer = $('circleVerified');
+      if (cVer) cVer.onclick = () => toggleMemoSection('verified');
+      const cUnver = $('circleUnverified');
+      if (cUnver) cUnver.onclick = () => toggleMemoSection('unverified');
+      const cRef = $('circleRefuted');
+      if (cRef) cRef.onclick = () => toggleMemoSection('refuted');
+      
+      globalFacts.forEach((f, i) => {
+        const v = f.verification || {};
+        const st = (v.status || 'UNVERIFIED');
+        const isVerified = st === 'VERIFIED';
+        const badgeClass = isVerified ? 'verified' : (st === 'REFUTED' ? 'refuted' : 'unverified');
+        const srcs = v.sources || [];
+        
+        const sourceBlocksHTML = srcs.map((s, sIdx) => {
+          const srcId = `src_memo_${i}_${sIdx}`;
+          return `
+            <div class="inner-box" style="border-left: 3px solid #3b82f6;">
+              <div class="inner-box-title">관련 인용 부분 (Snippet)</div>
+              <div style="color: #e2e8f0; font-size: 13px; font-style: italic; line-height: 1.6; margin-bottom: 12px; padding-left: 10px; border-left: 2px solid rgba(255,255,255,0.2);">
+                "${escapeHTML(s.snippet || 'No quote available')}"
+              </div>
+              
+              <div class="source-memo">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                  <div class="source-memo-title" style="margin: 0; font-size: 12px; color: #fff;">${escapeHTML(s.title || 'Untitled Source')}</div>
+                  <div style="font-size: 10px; color: #64b5f6; flex-shrink: 0; border: 1px solid rgba(100,181,246,0.3); padding: 2px 6px; border-radius: 4px;">출처 정보</div>
+                </div>
+                <div style="font-size: 10px; color: #fcd34d; font-weight: bold; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid rgba(252,211,77,0.2);">
+                  🏢 기관/신원: ${escapeHTML(s.publisher_identity || '웹사이트 (신뢰도 미확인)')}
+                </div>
+                <a href="${escapeHTML(s.url)}" target="_blank" class="source-memo-link" style="display: block; margin-bottom: 8px; font-size: 11px;">${escapeHTML(s.url)}</a>
+                <div style="font-size: 11px; color: #94a3b8; line-height: 1.5;">
+                  ${s.relevance ? escapeHTML(s.relevance) : 'Used in contextual search'}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+  
+        const factHTML = `
+          <div class="fact-card ${badgeClass}" style="cursor: default; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <!-- Title Section -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+              <div class="fact-claim" style="font-size: 16px; font-weight: 700; color: #fff; margin: 0; line-height: 1.4;">${escapeHTML(f.claim)}</div>
+              <div class="fact-meta" style="flex-shrink: 0; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                <span class="fact-badge ${badgeClass}" style="font-size: 11px; font-weight: bold; padding: 4px 10px;">${st}</span>
+                <span style="font-size: 10px; color: #94a3b8;">Confidence: ${Math.round((v.confidence || 0) * 100)}%</span>
+              </div>
+            </div>
+            
+            <!-- Detail Section (Split interfaces inside one box) -->
+            <div class="fact-detail">
+              
+              <!-- Subtitle Box: AI Reasoning -->
+              <div class="inner-box">
+                <div class="inner-box-title">검증 세부 내용 (AI Reasoning)</div>
+                <div style="color: #e2e8f0; font-size: 13px; line-height: 1.6;">
+                  ${escapeHTML(v.explanation || 'No explanation provided.')}
+                </div>
+              </div>
+              
+              <!-- Source Box: Snippet and Link -->
+              <div class="sources-list" style="display: flex; flex-direction: column; gap: 12px;">
+                ${sourceBlocksHTML || '<div class="inner-box" style="color:var(--text3); font-size:12px; text-align:center;">No sources provided for this fact.</div>'}
+              </div>
+              
+            </div>
+          </div>
+        `;
+        
+        if (isVerified) {
+          verifiedList.innerHTML += factHTML;
+        } else if (st === 'REFUTED') {
+          refutedList.innerHTML += factHTML;
+        } else {
+          unverifiedList.innerHTML += factHTML;
+        }
+      });
+      
+      // Auto scroll to bottom smoothly
+      const content = $('activeContent');
+      if(content) {
+         content.scrollTo({ top: content.scrollHeight, behavior: 'smooth' });
+      }
+    }
+
+    // Event delegation for accordion has been removed as the UI is now fully expanded by default
+  </script>
+</body>
+</html>
+
