@@ -41,6 +41,6 @@
   },
 
   "host_permissions": [
-    "http://localhost:3777/*"
+    "https://factlens-ic8i.onrender.com/*"
   ]
 }

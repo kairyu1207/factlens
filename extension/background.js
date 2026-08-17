@@ -8,7 +8,7 @@
  * 4. 진행 상태 + 결과/부분결과를 Content Script에 전달
  */
 
-const SERVER_URL = 'http://localhost:3777';
+const SERVER_URL = 'https://factlens-ic8i.onrender.com';
 
 let analysisState = {
   isAnalyzing: false,

@@ -2,7 +2,7 @@
  * FactLens Popup — 대시보드 로직
  */
 
-const SERVER_URL = 'http://localhost:3777';
+const SERVER_URL = 'https://factlens-ic8i.onrender.com';
 
 // DOM 요소
 const stateIdle = document.getElementById('state-idle');
@@ -310,7 +310,7 @@ async function checkServerStatus() {
     }
   } catch {
     statusDot.className = 'status-dot offline';
-    statusText.textContent = '서버 연결 실패 — localhost:3777';
+    statusText.textContent = '서버 연결 실패';
   }
 }
 
